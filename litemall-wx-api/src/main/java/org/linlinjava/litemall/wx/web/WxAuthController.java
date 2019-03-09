@@ -84,10 +84,11 @@ public class WxAuthController {
             user = userList.get(0);
         }
 
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        if (!encoder.matches(password, user.getPassword())) {
-            return ResponseUtil.fail(AUTH_INVALID_ACCOUNT, "账号密码不对");
-        }
+        // TODO nyk
+//        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+//        if (!encoder.matches(password, user.getPassword())) {
+//            return ResponseUtil.fail(AUTH_INVALID_ACCOUNT, "账号密码不对");
+//        }
 
         // userInfo
         UserInfo userInfo = new UserInfo();

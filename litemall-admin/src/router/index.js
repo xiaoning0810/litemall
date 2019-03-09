@@ -394,6 +394,10 @@ export const asyncRouterMap = [
           title: '对象存储',
           noCache: true
         }
+      },
+      {
+        path: 'http://localhost:8080/swagger-ui.html',
+        meta: { title: 'Swagger文档' }
       }
     ]
   },
