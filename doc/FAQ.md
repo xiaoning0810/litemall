@@ -12,12 +12,12 @@
 
 原因：
 
-目前账号的appid是本人申请，同时小程序未上线，因此开发者如果微信登录肯定会失败。
+小程序未上线之前，开发者必须设置自己申请的appid，否则微信登录肯定会失败。
 
 解决：
 
 1. 如果只是体验商品购买流程，开发者可以采用账号注册登录方式。
-2. 开发者在litemall-wx和litemall-wx-api模块的appid等信息设置成自己申请的信息。
+2. 开发者在litemall-wx、renard-wx和litemall-core模块的appid信息设置成自己申请的信息。
 
 ### 1.2 appid已经修改，微信登陆仍然失败
 
@@ -55,7 +55,7 @@
 
 现象：
 
-本人手机测试正常，而第三者手机测试不正常。
+开发者自己手机测试正常，而第三者手机测试不正常。
 
 解决：
 
@@ -132,6 +132,44 @@ litemall.wx.notify-url=
 2. 然后，测试后端的服务是否已启动，请求地址是否可以访问。
 3. 最后，如果设置正确，用chrome的开发者工具查看登录页面向后端请求返回数据信息；
 如果设置不正确，请启动相应的后端服务。
+
+### 2.2 安装失败/启动不成功
+
+现象：
+
+执行`cnpm install`失败
+
+原因：
+
+可能下载依赖失败。
+
+解决：
+
+清空node_modules，重新执行`cnpm install`命令，或者自行百度、Google。
+
+### 2.3 分页数据返回不正常
+
+现象：
+
+如果管理后台点击很大的分页页数（实际已超过当时数据最大页数），后端仍然能够返回数据。
+
+原因：
+
+这个不是BUG，而是开发者对于查询页面超过实际页面后应该产生何种效果的不同理解。
+* 返回最后一页数据可能是合理的；
+* 返回空数据可能也是合理的。
+
+解决：
+
+litemall-db模块的application-db.yaml资源文件中reasonable是true
+
+    pagehelper:
+      helperDialect:  mysql
+      reasonable: true
+      supportMethodsArguments:  true
+      params: count=countSql
+
+开发者可以尝试设置reasonable为false，然后检查是否能够解决问题。
 
 ## 3. 基础系统
 

@@ -6,7 +6,7 @@ Page({
     orderList: [],
     showType: 0,
     page: 1,
-    size: 10,
+    limit: 10,
     totalPages: 1
   },
   onLoad: function(options) {
@@ -21,26 +21,18 @@ Page({
     } catch (e) {}
 
   },
-
-  onPullDownRefresh() {
-    wx.showNavigationBarLoading() //在标题栏中显示加载
-    this.getOrderList();
-    wx.hideNavigationBarLoading() //完成停止加载
-    wx.stopPullDownRefresh() //停止下拉刷新
-  },
-
   getOrderList() {
     let that = this;
     util.request(api.OrderList, {
       showType: that.data.showType,
       page: that.data.page,
-      size: that.data.size
+      limit: that.data.limit
     }).then(function(res) {
       if (res.errno === 0) {
         console.log(res.data);
         that.setData({
-          orderList: that.data.orderList.concat(res.data.data),
-          totalPages: res.data.totalPages
+          orderList: that.data.orderList.concat(res.data.list),
+          totalPages: res.data.pages
         });
       }
     });
@@ -66,7 +58,7 @@ Page({
       orderList: [],
       showType: showType,
       page: 1,
-      size: 10,
+      limit: 10,
       totalPages: 1
     });
     this.getOrderList();

@@ -4,7 +4,6 @@ import com.github.binarywang.wxpay.bean.request.WxPayRefundRequest;
 import com.github.binarywang.wxpay.bean.result.WxPayRefundResult;
 import com.github.binarywang.wxpay.exception.WxPayException;
 import com.github.binarywang.wxpay.service.WxPayService;
-import com.github.pagehelper.PageInfo;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.linlinjava.litemall.core.notify.NotifyService;
@@ -49,17 +48,13 @@ public class AdminOrderService {
     private WxPayService wxPayService;
     @Autowired
     private NotifyService notifyService;
+    @Autowired
+    private LogHelper logHelper;
 
     public Object list(Integer userId, String orderSn, List<Short> orderStatusArray,
                        Integer page, Integer limit, String sort, String order) {
         List<LitemallOrder> orderList = orderService.querySelective(userId, orderSn, orderStatusArray, page, limit, sort, order);
-        long total = PageInfo.of(orderList).getTotal();
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("total", total);
-        data.put("items", orderList);
-
-        return ResponseUtil.ok(data);
+        return ResponseUtil.okList(orderList);
     }
 
     public Object detail(Integer id) {
@@ -161,6 +156,7 @@ public class AdminOrderService {
         // 注意订单号只发后6位
         notifyService.notifySmsTemplate(order.getMobile(), NotifyType.REFUND, new String[]{order.getOrderSn().substring(8, 14)});
 
+        logHelper.logOrderSucceed("退款", "订单编号 " + orderId);
         return ResponseUtil.ok();
     }
 
@@ -205,6 +201,7 @@ public class AdminOrderService {
         // "您的订单已经发货，快递公司 {1}，快递单 {2} ，请注意查收"
         notifyService.notifySmsTemplate(order.getMobile(), NotifyType.SHIP, new String[]{shipChannel, shipSn});
 
+        logHelper.logOrderSucceed("发货", "订单编号 " + orderId);
         return ResponseUtil.ok();
     }
 

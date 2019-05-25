@@ -1,14 +1,11 @@
 package org.linlinjava.litemall.admin.web;
 
-import com.github.pagehelper.PageInfo;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
-import org.apache.shiro.subject.Subject;
 import org.linlinjava.litemall.admin.annotation.RequiresPermissionsDesc;
 import org.linlinjava.litemall.admin.util.AdminResponseCode;
-import org.linlinjava.litemall.admin.util.PermVo;
+import org.linlinjava.litemall.admin.vo.PermVo;
 import org.linlinjava.litemall.admin.util.Permission;
 import org.linlinjava.litemall.admin.util.PermissionUtil;
 import org.linlinjava.litemall.core.util.JacksonUtil;
@@ -16,9 +13,9 @@ import org.linlinjava.litemall.core.util.ResponseUtil;
 import org.linlinjava.litemall.core.validator.Order;
 import org.linlinjava.litemall.core.validator.Sort;
 import org.linlinjava.litemall.db.domain.LitemallAdmin;
-import org.linlinjava.litemall.db.domain.LitemallBrand;
 import org.linlinjava.litemall.db.domain.LitemallPermission;
 import org.linlinjava.litemall.db.domain.LitemallRole;
+import org.linlinjava.litemall.db.service.LitemallAdminService;
 import org.linlinjava.litemall.db.service.LitemallPermissionService;
 import org.linlinjava.litemall.db.service.LitemallRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +28,7 @@ import javax.validation.constraints.NotNull;
 import java.util.*;
 
 import static org.linlinjava.litemall.admin.util.AdminResponseCode.ROLE_NAME_EXIST;
+import static org.linlinjava.litemall.admin.util.AdminResponseCode.ROLE_USER_EXIST;
 
 @RestController
 @RequestMapping("/admin/role")
@@ -42,6 +40,8 @@ public class AdminRoleController {
     private LitemallRoleService roleService;
     @Autowired
     private LitemallPermissionService permissionService;
+    @Autowired
+    private LitemallAdminService adminService;
 
     @RequiresPermissions("admin:role:list")
     @RequiresPermissionsDesc(menu={"系统管理" , "角色管理"}, button="角色查询")
@@ -52,12 +52,7 @@ public class AdminRoleController {
                        @Sort @RequestParam(defaultValue = "add_time") String sort,
                        @Order @RequestParam(defaultValue = "desc") String order) {
         List<LitemallRole> roleList = roleService.querySelective(name, page, limit, sort, order);
-        long total = PageInfo.of(roleList).getTotal();
-        Map<String, Object> data = new HashMap<>();
-        data.put("total", total);
-        data.put("items", roleList);
-
-        return ResponseUtil.ok(data);
+        return ResponseUtil.okList(roleList);
     }
 
     @GetMapping("/options")
@@ -72,7 +67,7 @@ public class AdminRoleController {
             options.add(option);
         }
 
-        return ResponseUtil.ok(options);
+        return ResponseUtil.okList(options);
     }
 
     @RequiresPermissions("admin:role:read")
@@ -132,6 +127,18 @@ public class AdminRoleController {
         if (id == null) {
             return ResponseUtil.badArgument();
         }
+
+        // 如果当前角色所对应管理员仍存在，则拒绝删除角色。
+        List<LitemallAdmin> adminList = adminService.all();
+        for(LitemallAdmin admin : adminList){
+            Integer[] roleIds = admin.getRoleIds();
+            for(Integer roleId : roleIds){
+                if(id.equals(roleId)){
+                    return ResponseUtil.fail(ROLE_USER_EXIST, "当前角色存在管理员，不能删除");
+                }
+            }
+        }
+
         roleService.deleteById(id);
         return ResponseUtil.ok();
     }

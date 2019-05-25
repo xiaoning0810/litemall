@@ -9,12 +9,16 @@ import org.apache.shiro.authc.UnknownAccountException;
 import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.subject.Subject;
+import org.linlinjava.litemall.admin.service.LogHelper;
 import org.linlinjava.litemall.admin.util.Permission;
 import org.linlinjava.litemall.admin.util.PermissionUtil;
+import org.linlinjava.litemall.core.util.IpUtil;
 import org.linlinjava.litemall.core.util.JacksonUtil;
 import org.linlinjava.litemall.core.util.ResponseUtil;
 import org.linlinjava.litemall.db.domain.LitemallAdmin;
+import org.linlinjava.litemall.db.domain.LitemallLog;
 import org.linlinjava.litemall.db.service.LitemallAdminService;
+import org.linlinjava.litemall.db.service.LitemallLogService;
 import org.linlinjava.litemall.db.service.LitemallPermissionService;
 import org.linlinjava.litemall.db.service.LitemallRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +27,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.linlinjava.litemall.admin.util.AdminResponseCode.ADMIN_INVALID_ACCOUNT;
@@ -39,12 +45,14 @@ public class AdminAuthController {
     private LitemallRoleService roleService;
     @Autowired
     private LitemallPermissionService permissionService;
+    @Autowired
+    private LogHelper logHelper;
 
     /*
      *  { username : value, password : value }
      */
     @PostMapping("/login")
-    public Object login(@RequestBody String body) {
+    public Object login(@RequestBody String body, HttpServletRequest request) {
         String username = JacksonUtil.parseString(body, "username");
         String password = JacksonUtil.parseString(body, "password");
 
@@ -56,14 +64,34 @@ public class AdminAuthController {
         try {
             currentUser.login(new UsernamePasswordToken(username, password));
         } catch (UnknownAccountException uae) {
+            logHelper.logAuthFail("登录", "用户帐号或密码不正确");
             return ResponseUtil.fail(ADMIN_INVALID_ACCOUNT, "用户帐号或密码不正确");
         } catch (LockedAccountException lae) {
+            logHelper.logAuthFail("登录", "用户帐号已锁定不可用");
             return ResponseUtil.fail(ADMIN_INVALID_ACCOUNT, "用户帐号已锁定不可用");
 
         } catch (AuthenticationException ae) {
-            return ResponseUtil.fail(ADMIN_INVALID_ACCOUNT, ae.getMessage());
+            logHelper.logAuthFail("登录", "认证失败");
+            return ResponseUtil.fail(ADMIN_INVALID_ACCOUNT, "认证失败");
         }
-        return ResponseUtil.ok(currentUser.getSession().getId());
+
+        currentUser = SecurityUtils.getSubject();
+        LitemallAdmin admin = (LitemallAdmin) currentUser.getPrincipal();
+        admin.setLastLoginIp(IpUtil.getIpAddr(request));
+        admin.setLastLoginTime(LocalDateTime.now());
+        adminService.updateById(admin);
+
+        logHelper.logAuthSucceed("登录");
+
+        // userInfo
+        Map<String, Object> adminInfo = new HashMap<String, Object>();
+        adminInfo.put("nickName", admin.getUsername());
+        adminInfo.put("avatar", admin.getAvatar());
+
+        Map<Object, Object> result = new HashMap<Object, Object>();
+        result.put("token", currentUser.getSession().getId());
+        result.put("adminInfo", adminInfo);
+        return ResponseUtil.ok(result);
     }
 
     /*
@@ -71,8 +99,10 @@ public class AdminAuthController {
      */
     @RequiresAuthentication
     @PostMapping("/logout")
-    public Object login() {
+    public Object logout() {
         Subject currentUser = SecurityUtils.getSubject();
+
+        logHelper.logAuthSucceed("退出");
         currentUser.logout();
         return ResponseUtil.ok();
     }
